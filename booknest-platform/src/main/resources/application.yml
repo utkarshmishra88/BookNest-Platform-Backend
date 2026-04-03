@@ -1,0 +1,31 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: booknest-platform
+  datasource:
+    url: jdbc:mysql://localhost:3306/booknest_auth_db?createDatabaseIfNotExist=true
+    username: root 
+    password: password 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    
+  # --- NEW OAUTH2 CONFIGURATION ---
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            # Replace these two lines with the exact keys GitHub just generated for you
+            client-id: Ov23liyItzcbh0vLCbnc
+            client-secret: 9838036b34a3a733b03e91a86515e078dfe306ba
+
+jwt: 
+  # A secure 256-bit hex key for signing tokens
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970 
+  # Token lifespan: 24 hours in milliseconds
+  expiration: 86400000
