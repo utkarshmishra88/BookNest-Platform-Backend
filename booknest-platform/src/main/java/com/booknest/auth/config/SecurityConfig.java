@@ -1,10 +1,8 @@
 package com.booknest.auth.config;
 
-import com.booknest.auth.filter.JwtAuthenticationFilter; // Import added
-import com.booknest.auth.handler.OAuth2SuccessHandler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -12,13 +10,22 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.booknest.auth.filter.JwtAuthenticationFilter;
+import com.booknest.auth.handler.OAuth2SuccessHandler;
+
+import lombok.RequiredArgsConstructor;
+
+// Make sure your specific package imports for JwtAuthenticationFilter and OAuth2SuccessHandler are at the top!
+// import com.booknest.auth.filter.JwtAuthenticationFilter;
+// import com.booknest.auth.handler.OAuth2SuccessHandler;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter; // Inject the filter
-    private final OAuth2SuccessHandler oAuth2SuccessHandler; 
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -26,7 +33,12 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/register", "/auth/login", "/error").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/books/**").permitAll()
+                
+                // --- UPDATED CATALOG ROUTES ---
+                // Allow public read-only access to categories and public book endpoints
+                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/books/public/**").permitAll()
+                
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
@@ -41,9 +53,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
-//.addFilterBefore(...): This is crucial. We tell Spring, 
-//"Run my JWT Bouncer before you run your own internal Username/Password checks."
-//
-//STATELESS Policy: Since we are using JWTs, we tell Spring not to create
-//"Sessions" (cookies). Every request must stand on its own by providing a token.

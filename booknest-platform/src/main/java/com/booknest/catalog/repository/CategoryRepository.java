@@ -1,0 +1,16 @@
+package com.booknest.catalog.repository;
+
+import com.booknest.catalog.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+	
+    // To prevent duplicate categories like "Java" and "Java"
+    boolean existsByName(String name);
+    
+    Optional<Category> findByName(String name);
+}
