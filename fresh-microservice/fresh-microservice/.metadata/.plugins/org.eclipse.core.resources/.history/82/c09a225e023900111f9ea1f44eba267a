@@ -1,0 +1,47 @@
+package com.booknest.auth.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity // Activates @PreAuthorize("hasAuthority('ADMIN')")
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/auth/register", "/auth/login").permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .oauth2Login(oauth2 -> oauth2
+                // A custom success handler is required here to capture the OAuth user,
+                // save them to the DB if new, and generate your platform's JWT.
+                .successHandler((request, response, authentication) -> {
+                    // Logic mapped out: 
+                    // 1. Extract email from authentication.getPrincipal()
+                    // 2. Check UserRepository. If not present, save new User(provider="GOOGLE")
+                    // 3. Generate JWT via JwtUtil
+                    // 4. Redirect to Frontend with JWT in URL or Header
+                    response.sendRedirect("http://localhost:3000/oauth2/redirect"); 
+                })
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}

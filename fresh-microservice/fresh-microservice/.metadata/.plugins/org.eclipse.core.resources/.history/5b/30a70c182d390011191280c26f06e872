@@ -1,0 +1,10 @@
+package com.booknest.auth.service;
+
+import com.booknest.auth.entity.User;
+
+public interface AuthService {
+    User register(User user);
+    String login(String email, String password);
+    void logout(String authHeader);
+    User getProfile(int userId);
+}

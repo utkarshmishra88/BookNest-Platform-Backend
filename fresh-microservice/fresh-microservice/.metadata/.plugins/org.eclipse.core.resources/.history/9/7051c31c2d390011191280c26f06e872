@@ -1,0 +1,70 @@
+package com.booknest.auth.service;
+
+import com.booknest.auth.entity.TokenBlacklist;
+import com.booknest.auth.entity.User;
+import com.booknest.auth.repository.TokenBlacklistRepository;
+import com.booknest.auth.repository.UserRepository;
+import com.booknest.auth.util.JwtUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+/**
+ * Implementation of AuthService. Handles password encoding, database validation, 
+ * token generation, and secure token blacklisting.
+ */
+@Service
+@RequiredArgsConstructor 
+public class AuthServiceImpl implements AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
+
+    @Override
+    public User register(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email already registered");
+        }
+        
+        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
+        
+        if(user.getProvider() == null) user.setProvider("LOCAL");
+        if(user.getRole() == null) user.setRole("CUSTOMER"); 
+        
+        return userRepository.save(user);
+    }
+
+    @Override
+    public String login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+        
+        return jwtUtil.generateToken(user);
+    }
+
+    @Override
+    public void logout(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            
+            if (!tokenBlacklistRepository.existsByToken(token)) {
+                TokenBlacklist blacklistedToken = TokenBlacklist.builder()
+                        .token(token)
+                        .build();
+                tokenBlacklistRepository.save(blacklistedToken);
+            }
+        }
+    }
+
+    @Override
+    public User getProfile(int userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+}

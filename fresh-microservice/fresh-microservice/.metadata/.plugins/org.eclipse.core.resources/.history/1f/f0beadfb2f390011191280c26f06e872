@@ -1,0 +1,20 @@
+package com.booknest.auth.service;
+
+import com.booknest.auth.entity.User;
+
+public interface AuthService {
+    // Returns a status message (e.g., "Check your email for OTP")
+    String registerUser(User user); 
+
+    // Verifies the 6-digit code and activates the account
+    String verifyOtp(String email, String otp);
+
+    // Checks isActive status and returns a JWT
+    String login(String email, String password);
+
+    // Invalidates the current session token
+    void logout(String authHeader);
+
+    // Fetches full user details
+    User getProfile(Integer userId);
+}

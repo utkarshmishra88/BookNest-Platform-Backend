@@ -1,0 +1,49 @@
+package com.booknest.auth.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Data // Generates Getters, Setters, toString, equals, and hashCode
+@NoArgsConstructor // Generates default constructor required by JPA
+@AllArgsConstructor
+@Builder // Allows clean object creation: User.builder().email("x").build();
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
+    private Integer userId;
+
+    @Column(name = "full_name", nullable = false, length = 100)
+    private String fullName;
+
+    @Column(name = "email", nullable = false, unique = true, length = 150)
+    private String email;
+
+    @Column(name = "password_hash")
+    private String passwordHash; 
+
+    @Column(name = "role", nullable = false, length = 20)
+    private String role; // "CUSTOMER" or "ADMIN"
+
+    @Column(name = "provider", length = 50)
+    private String provider; // "LOCAL", "GOOGLE", or "GITHUB"
+
+    @Column(name = "mobile")
+    private Long mobile;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+}

@@ -1,0 +1,109 @@
+package com.booknest.auth.service;
+
+import com.booknest.auth.client.NotificationClient;
+import com.booknest.auth.entity.TokenBlacklist;
+import com.booknest.auth.entity.User;
+import com.booknest.auth.repository.TokenBlacklistRepository;
+import com.booknest.auth.repository.UserRepository;
+import com.booknest.auth.util.JwtUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Random;
+
+@Service
+@RequiredArgsConstructor
+public class AuthServiceImpl implements AuthService {
+
+    private final UserRepository userRepository;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final NotificationClient notificationClient;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    @Override
+    @Transactional
+    public String registerUser(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Error: Email is already registered!");
+        }
+
+        // 1. Generate a random 6-digit OTP
+        String otp = String.format("%06d", new Random().nextInt(999999));
+
+        // 2. Prepare the user entity (Inactive until OTP is verified)
+        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
+        user.setOtp(otp);
+        user.setActive(false); 
+        user.setRole("CUSTOMER"); // Default role
+        user.setProvider("LOCAL");
+
+        userRepository.save(user);
+
+        // 3. Use Feign to trigger the Notification Service
+        try {
+            notificationClient.sendOtp(user.getEmail(), otp);
+        } catch (Exception e) {
+            // Log error but don't stop the process (or handle as needed)
+            System.err.println("Notification Service failed: " + e.getMessage());
+        }
+
+        return "Registration successful! Please check your email for the verification OTP.";
+    }
+
+    @Override
+    @Transactional
+    public String verifyOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        if (user.getOtp() != null && user.getOtp().equals(otp)) {
+            user.setActive(true);
+            user.setOtp(null); // Clear OTP so it can't be reused
+            userRepository.save(user);
+            return "Account verified successfully. You can now login.";
+        } else {
+            throw new RuntimeException("Invalid or expired OTP. Please try again.");
+        }
+    }
+
+    @Override
+    public String login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Invalid email or password."));
+
+        if (!user.isActive()) {
+            throw new RuntimeException("Account not verified. Please check your email for the OTP.");
+        }
+
+        if (passwordEncoder.matches(password, user.getPasswordHash())) {
+            return jwtUtil.generateToken(user);
+        } else {
+            throw new RuntimeException("Invalid email or password.");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void logout(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            
+            // Add token to blacklist so JwtFilter rejects it in future requests
+            if (!tokenBlacklistRepository.existsByToken(token)) {
+                TokenBlacklist blacklistedToken = TokenBlacklist.builder()
+                        .token(token)
+                        .build();
+                tokenBlacklistRepository.save(blacklistedToken);
+            }
+        }
+    }
+
+    @Override
+    public User getProfile(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+    }
+}

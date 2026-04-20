@@ -1,0 +1,37 @@
+package com.booknest.auth.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Data @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer userId;
+
+    private String fullName;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    private String passwordHash;
+
+    private String role; // "CUSTOMER" or "ADMIN"
+
+    private String provider; // "LOCAL", "GOOGLE", "GITHUB"
+
+    private String otp; // Stores the 6-digit code
+
+    private boolean isActive; // Account is disabled until OTP is verified
+
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+}
